@@ -25,7 +25,8 @@ postulate I'llDoThisLater : forall {l}{X : Set l} -> X
 -- When we concatenate vectors, we add their lengths.
 
 _+V_ : {X : Set}{m n : Nat} -> Vec X m -> Vec X n -> Vec X (m +N n)
-xs +V ys  = {!!}
+[] +V ys = ys
+(x :: xs) +V ys = x :: xs +V ys
 infixr 3 _+V_
 
 -- NOTICE that even though m and n are numbers, not types, they can
@@ -50,7 +51,8 @@ testConcV = refl
 ----------------------------------------------------------------------------
 
 vec : forall {n X} -> X -> Vec X n
-vec x = {!!}
+vec {zero} x = []
+vec {suc n} x = x :: vec x
 
 -- HINT: you may need to override default invisibility
 
@@ -67,7 +69,8 @@ vec x = {!!}
 
 vapp : forall {n X Y} ->
        Vec (X -> Y) n -> Vec X n -> Vec Y n
-vapp fs xs = {!!}
+vapp fs [] = []
+vapp (f :: fs) (x :: xs) = f x :: vapp fs xs
 
 
 ----------------------------------------------------------------------------
@@ -78,11 +81,10 @@ vapp fs xs = {!!}
 -- no pattern matching or recursion permitted
 
 vmap : forall {n X Y} -> (X -> Y) -> Vec X n -> Vec Y n
-vmap f xs = {!!}
+vmap f xs = vapp (vec f) xs 
 
 vzip : forall {n X Y} -> Vec X n -> Vec Y n -> Vec (X * Y) n
-vzip xs ys = {!!}
-
+vzip xs ys = vapp (vmap (λ x → _,_ x) xs) ys 
 
 ----------------------------------------------------------------------------
 -- Chopping: a weird new thing, mixing program and proof
@@ -100,8 +102,14 @@ data Choppable {X : Set}(m n : Nat) : Vec X (m +N n) -> Set where
 -- ??? 0.4 chop                                               (score: ? / 2)
 ----------------------------------------------------------------------------
 
+-- plusRightIdentity : {n : Nat} → n +N zero == n
+-- plusRightIdentity {zero} = refl
+-- plusRightIdentity {suc n} = {!?!}
+
 chop : {X : Set}(m n : Nat)(xs : Vec X (m +N n)) -> Choppable m n xs
-chop m n xs = {!!}
+chop zero n xs = chopTo [] xs
+chop (suc m) n (x :: xs) with chop m n xs
+chop (suc m) n (x :: .(xs +V ys)) | chopTo xs ys = chopTo (x :: xs) ys 
 
 -- DON'T PANIC if you can't pattern match on the vector right away, because
 -- the fact is that without looking at WHERE TO CHOP, you don't know if you
@@ -139,11 +147,13 @@ testChop = refl
 -- you'll need to complete the view type yourself
 
 data Unzippable {X Y n} : Vec (X * Y) n -> Set where
-  unzipped : {- some stuff -> -} Unzippable {!!}
+  unzipped : (xs : Vec X n)(ys : Vec Y n) -> Unzippable (vzip xs ys) 
   
 unzip : forall {X Y n}(xys : Vec (X * Y) n) -> Unzippable xys
-unzip xys = {!!}
-
+unzip [] = unzipped [] []
+unzip (x , y :: xys) with unzip xys 
+unzip (x , y :: .(vapp (vapp (vec (λ x₁ → _,_ x₁)) xs) ys)) | unzipped xs ys =
+  unzipped (x :: xs) (y :: ys) 
 
 ----------------------------------------------------------------------------
 -- ??? 0.6 vectors are applicative                            (score: ? / 2)
